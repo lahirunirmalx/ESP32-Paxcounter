@@ -328,6 +328,17 @@ void stop_BLE_scan(void) {
     ESP_ERROR_CHECK(esp_bt_controller_disable());
     ESP_ERROR_CHECK(esp_bt_controller_deinit());
 #endif
+    // The controller is off, so no more adverts can be queued. Delete the
+    // event task first (it blocks on the queue), then the queue itself;
+    // start_BLE_scan() creates both again.
+    if (hci_eventprocessor != NULL) {
+      vTaskDelete(hci_eventprocessor);
+      hci_eventprocessor = NULL;
+    }
+    if (adv_queue != NULL) {
+      vQueueDelete(adv_queue);
+      adv_queue = NULL;
+    }
     ESP_LOGI(TAG, "Bluetooth scanner stopped");
     initialized_ble = 0;
   }

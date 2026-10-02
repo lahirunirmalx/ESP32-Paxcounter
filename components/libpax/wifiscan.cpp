@@ -155,7 +155,13 @@ void wifi_sniffer_init(uint16_t wifi_channel_switch_interval) {
 void wifi_sniffer_stop() {
 #ifdef LIBPAX_WIFI
   if (initialized_wifi) {
-    if (WifiChanTimer) xTimerStop(WifiChanTimer, 0);
+    if (WifiChanTimer) {
+      // delete, not just stop: wifi_sniffer_init() creates a new one
+      if (xTimerDelete(WifiChanTimer, pdMS_TO_TICKS(100)) != pdPASS) {
+        ESP_LOGW("libpax", "channel timer delete failed");
+      }
+      WifiChanTimer = NULL;
+    }
     ESP_ERROR_CHECK(esp_wifi_set_promiscuous_rx_cb(&wifi_noop_sniffer));
     ESP_ERROR_CHECK(
         esp_wifi_set_promiscuous(false));  // now switch off monitor mode

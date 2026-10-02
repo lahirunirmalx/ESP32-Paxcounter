@@ -210,7 +210,10 @@ int libpax_counter_stop() {
   ESP_LOGI("libpax", "Stopping libpax.");
   wifi_sniffer_stop();
   stop_BLE_scan();
-  xTimerStop(PaxReportTimer, 0);
+  // delete, not just stop: a stopped timer still holds its memory
+  if (xTimerDelete(PaxReportTimer, pdMS_TO_TICKS(100)) != pdPASS) {
+    ESP_LOGW("libpax", "report timer delete failed");
+  }
   PaxReportTimer = NULL;
 
   libpax_state = LIBPAX_STOPPED;
