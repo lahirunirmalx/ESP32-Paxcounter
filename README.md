@@ -38,6 +38,81 @@ Data can either be stored on a local SD-card, transferred to cloud using LoRaWAN
 
 You can build this project battery powered using ESP32 deep sleep mode and reach long uptimes with a single 18650 Li-Ion cell.
 
+# Native ESP-IDF rewrite (branch `feature/espidf-hal-rewrite`)
+
+This branch replaces the Arduino code base with a native ESP-IDF 5.3 firmware
+built around a hardware abstraction layer (HAL) and one FreeRTOS task per
+feature. The Arduino version remains on `master`.
+
+## Build, flash, test
+
+```
+pio run                      # build esp32_dev (generic ESP32-WROOM-32 devkit)
+pio run -t upload -t monitor # flash and open the serial console
+pio test -e native           # host unit tests (payload, commands, config)
+pio run -t erase             # wipe flash incl. stored config
+```
+
+## Layout
+
+| Path | Role |
+|---|---|
+| `main/app_main.cpp` | boot sequence, starts every feature |
+| `components/app_hal/` | vendor-neutral interfaces: `hal_gpio`, `hal_uart`, `hal_kv`, `hal_sys` |
+| `components/port_esp_idf/` | ESP-IDF implementation of the HAL, the only code that includes `driver/*.h` |
+| `components/app_board/` | pin map (`board.h`) |
+| `components/app_config/` | runtime config: defaults/validation (pure) + NVS store behind a mutex |
+| `components/app_payload/` | plain / packed payload encoder, byte-compatible with the legacy firmware |
+| `components/app_pax/` | libpax control + pax report task |
+| `components/app_transport/` | outbound queue + transport task with pluggable sinks |
+| `components/app_rcmd/` | remote command parser, legacy opcode table, console reader |
+| `components/app_led/`, `app_button/`, `app_housekeeping/` | status LED, button, health checks |
+| `components/libpax/` | vendored libpax (see `VENDORED.md`) |
+
+## Tasks
+
+| Task | Core | Prio | Job |
+|---|---|---|---|
+| transport | 0 | 2 | drains the payload queue into every sink |
+| console | 0 | 2 | reads hex command lines from the USB serial port |
+| pax | 1 | 4 | turns each libpax report into a counter payload |
+| rcmd | 1 | 3 | executes remote commands one at a time |
+| button | 1 | 5 | debounces the BOOT button (click = send count now, hold 1 s = button payload) |
+| led | 1 | 1 | boot / run / error patterns, flash per sent payload |
+| housekeep | 1 | 1 | heap, stack and queue health every 30 s |
+
+WiFi, the BT controller and the libpax timers run on core 0 (ESP-IDF pins them
+there). Tasks communicate only through queues, task notifications and the
+mutex-guarded config; there are no shared mutable globals.
+
+## Console commands
+
+Type hex bytes and press Enter, using the same opcodes as the LoRaWAN downlink:
+
+| Send | Effect |
+|---|---|
+| `80` | get config (reply on port 3) |
+| `81` | get status (reply on port 2) |
+| `0a 0f` | set send cycle to 30 s |
+| `0e 01` | BLE counting on |
+| `01 50` | RSSI limit -80 dBm |
+| `21` | save config to flash |
+| `09 02` | factory reset and restart |
+
+Payloads are printed as `payload: port=1 len=2 hex=0700`.
+
+Payload byte layouts match the legacy firmware, with one change: the reset
+reason byte in the status payload (port 2) is now a `hal_reset_reason_t` value
+(see `components/app_hal/include/hal_sys.h`), not an ESP32 ROM reset code.
+
+## Status
+
+Done: WiFi + BLE counting, plain/packed payloads, the full legacy opcode table,
+NVS config, console transport, LED, button, watchdogs, host tests.
+Not yet ported: LoRaWAN, display, GPS, sensors, SD card, battery, OTA, deep sleep.
+On this board the related opcodes are accepted and logged as unavailable.
+MQTT over WiFi cannot coexist with WiFi sniffing on one radio.
+
 # License
 
 Copyright 2018-2022 Oliver Brandmueller <ob@sysadm.in>

@@ -1,0 +1,56 @@
+# sdkconfig.defaults - DEVELOPMENT BASELINE (ESP32-WROOM-32, 4 MB flash)
+#
+# Irreversible security options (Secure Boot, Flash Encryption release mode,
+# anti-rollback, NVS encryption) are NOT set here. They belong in a separate
+# production overlay that is only added on explicit request.
+
+# --- Flash / partitions -----------------------------------------------------
+CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
+
+# --- Compiler ---------------------------------------------------------------
+# Size optimization: BT controller + WiFi promiscuous mode are IRAM-tight.
+CONFIG_COMPILER_OPTIMIZATION_SIZE=y
+CONFIG_COMPILER_STACK_CHECK_MODE_NORM=y
+
+# --- Watchdogs --------------------------------------------------------------
+CONFIG_ESP_TASK_WDT_EN=y
+CONFIG_ESP_TASK_WDT_INIT=y
+CONFIG_ESP_TASK_WDT_TIMEOUT_S=10
+CONFIG_ESP_TASK_WDT_PANIC=y
+CONFIG_ESP_INT_WDT=y
+CONFIG_ESP_INT_WDT_TIMEOUT_MS=300
+
+# --- Brownout ---------------------------------------------------------------
+CONFIG_ESP_BROWNOUT_DET=y
+CONFIG_ESP_BROWNOUT_DET_LVL_SEL_0=y
+
+# --- Logging ----------------------------------------------------------------
+CONFIG_LOG_DEFAULT_LEVEL_INFO=y
+CONFIG_LOG_MAXIMUM_LEVEL_DEBUG=y
+CONFIG_LOG_TIMESTAMP_SOURCE_RTOS=y
+
+# --- FreeRTOS ---------------------------------------------------------------
+CONFIG_FREERTOS_HZ=1000
+CONFIG_FREERTOS_USE_TRACE_FACILITY=y
+CONFIG_FREERTOS_GENERATE_RUN_TIME_STATS=y
+CONFIG_FREERTOS_VTASKLIST_INCLUDE_COREID=y
+CONFIG_FREERTOS_CHECK_STACKOVERFLOW_CANARY=y
+# libpax runs its report callback and channel hopping in timer callbacks
+CONFIG_FREERTOS_TIMER_TASK_STACK_DEPTH=4096
+
+# --- Bluetooth: controller only, raw HCI over VHCI (used by libpax) --------
+CONFIG_BT_ENABLED=y
+CONFIG_BT_CONTROLLER_ONLY=y
+CONFIG_BTDM_CTRL_MODE_BLE_ONLY=y
+CONFIG_BTDM_CTRL_HCI_MODE_VHCI=y
+CONFIG_BTDM_CTRL_PINNED_TO_CORE_0=y
+CONFIG_BTDM_BLE_SCAN_DUPL=y
+CONFIG_BTDM_SCAN_DUPL_TYPE_DEVICE=y
+CONFIG_BTDM_SCAN_DUPL_CACHE_SIZE=200
+
+# --- WiFi (promiscuous sniffer, no STA connection) --------------------------
+CONFIG_ESP_WIFI_ENABLED=y
+CONFIG_ESP_WIFI_TASK_PINNED_TO_CORE_0=y
+CONFIG_ESP_COEX_SW_COEXIST_ENABLE=y
