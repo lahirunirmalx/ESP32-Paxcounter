@@ -1,0 +1,13 @@
+{
+  "name": "libpax",
+  "version": "1.1.1",
+  "description": "Library for PAX counting using BLE and WiFi (vendored, see VENDORED.md)",
+  "keywords": "libpax",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dbinfrago/libpax"
+  },
+  "frameworks": ["espidf", "arduino"],
+  "platforms": "espressif32"
+}
